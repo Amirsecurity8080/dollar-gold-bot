@@ -1,5 +1,4 @@
 import requests
-import os
 from datetime import datetime
 import pytz
 
@@ -12,43 +11,61 @@ headers = {
     "Authorization": f"Bearer {API_TOKEN}"
 }
 
-r = requests.get(
-    "https://api.alanchand.com/?type=currencies",
-    headers=headers,
-    timeout=20
-)
-
-data = r.json()
-
-usd = data["usd"]["sell"]
-eur = data["eur"]["sell"]
-
-# اگر API تتر هم داخل currencies باشد
 try:
-    usdt = data["usdt"]["sell"]
-except:
-    usdt = "وجود ندارد"
+    r = requests.get(
+        "https://api.alanchand.com/?type=currencies",
+        headers=headers,
+        timeout=20
+    )
 
-iran = pytz.timezone("Asia/Tehran")
+    r.raise_for_status()
 
-now = datetime.now(iran)
+    data = r.json()
 
-message = f"""
+    usd = data["usd"]["sell"]
+    eur = data["eur"]["sell"]
+
+    if "usdt" in data:
+        usdt = data["usdt"]["sell"]
+    else:
+        usdt = "وجود ندارد"
+
+    iran = pytz.timezone("Asia/Tehran")
+    now = datetime.now(iran)
+
+    message = f"""
 📊 قیمت لحظه‌ای بازار
 
-💵 دلار آمریکا: {usd:,}
-
+💵 دلار: {usd:,}
 💶 یورو: {eur:,}
-
 💲 تتر: {usdt}
 
 🕒 {now.strftime("%Y-%m-%d %H:%M")}
 """
 
-requests.post(
-    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-    data={
-        "chat_id": CHAT_ID,
-        "text": message
-    }
-)
+    telegram = requests.post(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+        data={
+            "chat_id": CHAT_ID,
+            "text": message
+        },
+        timeout=20
+    )
+
+    print("Telegram Status:", telegram.status_code)
+    print(telegram.text)
+
+except Exception as e:
+    print("ERROR:", str(e))
+
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            data={
+                "chat_id": CHAT_ID,
+                "text": f"❌ ERROR:\n{str(e)}"
+            },
+            timeout=20
+        )
+    except Exception as err:
+        print("Telegram Error:", err)

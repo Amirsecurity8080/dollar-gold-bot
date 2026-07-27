@@ -1,6 +1,6 @@
 import requests
 
-BOT_TOKEN = "8985690731:AAGbeHG5hHxjpKoSGBrfCGtN35jGQgCI9as"
+BOT_TOKEN = "8985690731:AAGaZRKBdUJIu7ExSHoJEAWQ8xrj1eLCYlM"
 CHAT_ID = "-1004458187017"
 
 message = """📊 تست ربات

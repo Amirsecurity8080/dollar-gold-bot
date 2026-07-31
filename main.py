@@ -63,7 +63,7 @@ def main() -> None:
         now = datetime.now(iran)
 
         message = (
-            "📊 قیمت لحظه‌ای ارزهای دیجیتال (منبع: CoinGecko)\n\n"
+            "📊 قیمت لحظه‌ای ارزهای دیجیتال \n\n"
             + "\n".join(lines)
             + f"\n\n🕒 {now.strftime('%Y-%m-%d %H:%M')}"
         )

@@ -4,16 +4,20 @@ import requests
 from datetime import datetime
 import pytz
 
+# ---------------------------------------------------------------------------
+# فقط توکن ربات تلگرام و آیدی کانال لازمه. CoinGecko کاملاً رایگان و بدون
+# کلیده و از هر جای دنیا (از جمله GitHub Actions) در دسترسه.
+# ---------------------------------------------------------------------------
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
-NOBITEX_STATS_URL = "https://api.nobitex.ir/market/stats"
+COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price"
 
-# نمادهایی که می‌خوای قیمتشون رو بگیری: (نماد نمایشی، srcCurrency، dstCurrency)
-SYMBOLS = [
-    ("💲 تتر", "usdt", "rls"),
-    ("₿ بیت‌کوین", "btc", "rls"),
-    ("Ξ اتریوم", "eth", "rls"),
+# نمادهایی که می‌خوای قیمتشون رو بگیری: (نماد نمایشی، coingecko id)
+COINS = [
+    ("💲 تتر", "tether"),
+    ("₿ بیت‌کوین", "bitcoin"),
+    ("Ξ اتریوم", "ethereum"),
 ]
 
 
@@ -31,25 +35,6 @@ def send_telegram_message(text: str) -> None:
         print("Telegram Error:", telegram_err)
 
 
-def get_price(src: str, dst: str) -> float | None:
-    """قیمت لحظه‌ای یک جفت ارز رو از نوبیتکس می‌گیرد. مقدار خروجی به ریال است."""
-    resp = requests.post(
-        NOBITEX_STATS_URL,
-        json={"srcCurrency": src, "dstCurrency": dst},
-        timeout=20,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if data.get("status") != "ok":
-        raise RuntimeError(f"پاسخ نامعتبر از نوبیتکس: {data}")
-
-    key = f"{src}-{dst}"
-    stats = data.get("stats", {}).get(key)
-    if not stats:
-        return None
-    return float(stats["latest"])
-
-
 def main() -> None:
     missing = [n for n, v in {"BOT_TOKEN": BOT_TOKEN, "CHAT_ID": CHAT_ID}.items() if not v]
     if missing:
@@ -57,21 +42,28 @@ def main() -> None:
         sys.exit(1)
 
     try:
+        ids = ",".join(cid for _, cid in COINS)
+        r = requests.get(
+            COINGECKO_URL,
+            params={"ids": ids, "vs_currencies": "usd"},
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+
         lines = []
-        for label, src, dst in SYMBOLS:
-            price_rls = get_price(src, dst)
-            if price_rls is None:
+        for label, cid in COINS:
+            price = data.get(cid, {}).get("usd")
+            if price is None:
                 lines.append(f"{label}: نامشخص")
-                continue
-            # نوبیتکس قیمت رو به ریال می‌ده؛ برای نمایش به تومان تقسیم بر ۱۰ می‌کنیم
-            price_toman = price_rls / 10
-            lines.append(f"{label}: {price_toman:,.0f} تومان")
+            else:
+                lines.append(f"{label}: ${price:,.4f}" if price < 1 else f"{label}: ${price:,.2f}")
 
         iran = pytz.timezone("Asia/Tehran")
         now = datetime.now(iran)
 
         message = (
-            "📊 قیمت لحظه‌ای بازار (منبع: نوبیتکس)\n\n"
+            "📊 قیمت لحظه‌ای ارزهای دیجیتال (منبع: CoinGecko)\n\n"
             + "\n".join(lines)
             + f"\n\n🕒 {now.strftime('%Y-%m-%d %H:%M')}"
         )

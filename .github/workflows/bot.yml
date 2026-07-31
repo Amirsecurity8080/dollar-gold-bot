@@ -1,23 +1,29 @@
-name: Dollar Bot
+name: Send Price Update
 
 on:
   schedule:
-    - cron: "0 * * * *"
-
-  workflow_dispatch:
+    # هر ۳۰ دقیقه یک‌بار اجرا می‌شود (زمان‌بندی به وقت UTC است)
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}   # امکان اجرای دستی از تب Actions
 
 jobs:
-  run:
+  send-price:
     runs-on: ubuntu-latest
-
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - run: python main.py
+      - name: Run bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          ALANCHAND_API_TOKEN: ${{ secrets.ALANCHAND_API_TOKEN }}
+        run: python main.py
